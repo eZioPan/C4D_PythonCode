@@ -73,7 +73,9 @@ def main():
     toCnt = toLs.GetObjectCount()
 
     if fromCnt == 0 or toCnt == 0:
-        if lastState == True:           # do not pour garbage into console
+        if lastState == True:           # do not pour garbage into console, or refresh scene too fast.
+            lineObj.ResizeObject(0,1)   # clean spline data if nothing to generate.
+            lineObj.Message(c4d.MSG_UPDATE)
             print("[RayConnector] Not enough Objects.")
             lastState = False
         return None
