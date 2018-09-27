@@ -2,7 +2,7 @@
 # Author: eZioPan
 # Page: github.com/eZioPan
 # License: Creative Commons Attribution Share Alike 4.0
-# Last Update: 2018Sep26
+# Last Update: 2018Sep27
 
 """
 USEAGE:
