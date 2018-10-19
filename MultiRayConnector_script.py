@@ -2,7 +2,7 @@
 # Author: eZioPan
 # Page: github.com/eZioPan
 # License: Creative Commons Attribution Share Alike 4.0
-# Last Update: 2018Sep28
+# Last Update: 2018Oct19
 
 """
 USEAGE:
@@ -23,6 +23,7 @@ def main():
 
     bc1 = c4d.GetCustomDatatypeDefault(c4d.DTYPE_GROUP)
     bc1[c4d.DESC_NAME] = "Ray Attribute"
+    bc1[c4d.DESC_DEFAULT] = 1                   # Make userdata group tab stay open in default-open-tab mode(Right mouse button click on an object tab).
     bc1[c4d.DESC_PARENTGROUP] = c4d.DescID(0)   # Put this group as a table of the object
 
     [bc2, bc4] = [c4d.GetCustomDatatypeDefault(c4d.DTYPE_BOOL) for i in range(0,2)]
@@ -32,7 +33,8 @@ def main():
     bc4[c4d.DESC_NAME] = "To Point"
     bc5[c4d.DESC_NAME] = "To Objects List"
 
-    DesID1 = sweepObj.AddUserData(bc1) # Get root user group description ID for other insertions
+    DesID1 = sweepObj.AddUserData(bc1) # Get root user group description ID for other insertions, and active tab
+
 
     for item in [bc2, bc3, bc4, bc5]:
         item[c4d.DESC_PARENTGROUP] = DesID1
@@ -51,24 +53,35 @@ def main():
 
     # Core code in python tag
     pythonTag = c4d.BaseTag(c4d.Tpython)
-    pythonTag[c4d.ID_BASELIST_NAME] = "AutoConnectionUpdater"
+    pythonTag[c4d.ID_BASELIST_NAME] = "Auto Connection Updater"
     pythonTag[c4d.TPYTHON_CODE] = (
 """# Description: A script to create a multiple connector to connect between two group of objects
 # Author: eZioPan
 # Page: github.com/eZioPan
 # License: Creative Commons Attribution Share Alike 4.0
-# Last Update: 2018Sep28
+# Last Update: 2018Oct19
 
 import c4d
 from c4d.modules import mograph as mo
 
 lastState = False       # track last running state
 
+# filter non-exist objects out of result object list
+def extractInExData(inExData):
+    output = []
+    inExLen = inExData.GetObjectCount()
+    for i in range(0,inExLen):
+        obj = inExData.ObjectFromIndex(doc,i)
+        # check both InExcludeData.GetObjectCount() and InExcludeData.ObjectFromIndex() to get actual objects in list.
+        if obj == None:
+            continue
+        output.append(obj)
+    return output
+
+# extract point postion information on demand
 def GetGroupPointsPos(objLs=[], usePoint=False):
     posLs = []
-    objCnt = len(objLs)
-    for i in range(objCnt):
-        obj = objLs.ObjectFromIndex(doc,i)
+    for obj in objLs:
         objMg = obj.GetMg()
         if usePoint == False or obj.GetType() == c4d.Onull:
              posLs.append(objMg.off)
@@ -84,6 +97,7 @@ def GetGroupPointsPos(objLs=[], usePoint=False):
                 posLs.append(objMg*point)
     return posLs
 
+# modify line data from point position
 def SetLinePointPos(lineObj, fromPosLs, toPosLs):
     fromPosCnt = len(fromPosLs)
     toPosCnt = len(toPosLs)
@@ -111,29 +125,27 @@ def main():
     sweepObj = op.GetObject()
     lineObj = sweepObj.GetDown().GetNext()
     fromPoint = sweepObj[c4d.ID_USERDATA,2]
-    fromLs = sweepObj[c4d.ID_USERDATA,3]
+    fromInExData = sweepObj[c4d.ID_USERDATA,3]
     toPoint = sweepObj[c4d.ID_USERDATA,4]
-    toLs = sweepObj[c4d.ID_USERDATA,5]
+    toInExData = sweepObj[c4d.ID_USERDATA,5]
 
-    fromCnt = fromLs.GetObjectCount()
-    toCnt = toLs.GetObjectCount()
+    fromLs = extractInExData(fromInExData)
+    toLs = extractInExData(toInExData)
 
-    if fromCnt == 0 or toCnt == 0:
-        if lastState == True:           # do not pour garbage into console, or refresh scene too fast.
+    if len(fromLs) == 0 or len(toLs) == 0:
+        if lastState == True: # do not pour garbage into console, or refresh scene too fast.
             lineObj.ResizeObject(0,1)   # clean spline data if nothing to generate.
             lineObj.Message(c4d.MSG_UPDATE)
             print("[RayConnector] Not enough Objects.")
             lastState = False
-        return None
+        return None           # Terminate execution
 
     if lastState == False:              # do not pour garbage into console
         lastState = True
         print("[RayConnector] OK.")
 
     fromPosLs = GetGroupPointsPos(fromLs,fromPoint)
-
     toPosLs = GetGroupPointsPos(toLs,toPoint)
-
 
     SetLinePointPos(lineObj, fromPosLs, toPosLs)
 
@@ -142,14 +154,26 @@ def main():
     return True
 """
     )
-    sweepObj.InsertTag(pythonTag)
+
+    intActTag = c4d.BaseTag(c4d.Tinteraction)
+    intActTag[c4d.ID_BASELIST_NAME] = "Disable Viewport Selection"
+    intActTag[c4d.INTERACTIONTAG_SELECT] = True
+
+    for tag in [pythonTag, intActTag]:
+        sweepObj.InsertTag(tag)
 
     doc = c4d.documents.GetActiveDocument()
     doc.StartUndo()
     doc.InsertObject(sweepObj)
+    doc.SetActiveObject(sweepObj, mode=c4d.SELECTION_NEW)
+    c4d.gui.ActiveObjectManager_SetObject(      # Change active tab after insert into scene
+        id=c4d.ACTIVEOBJECTMODE_OBJECT,
+        op=sweepObj,
+        flags=c4d.ACTIVEOBJECTMANAGER_SETOBJECTS_NOMODESWITCH,
+        activepage=DesID1
+    )
     doc.AddUndo(c4d.UNDOTYPE_NEW, item)
     doc.EndUndo()
-    doc.SetActiveObject(sweepObj, mode=c4d.SELECTION_NEW)
     c4d.EventAdd()
 
 if __name__=='__main__':
