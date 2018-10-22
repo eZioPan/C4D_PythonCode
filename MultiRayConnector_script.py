@@ -92,7 +92,7 @@ def GetGroupPointsPos(objLs=[], usePoint=False):
             moMatrixLs = md.GetArray(c4d.MODATA_MATRIX)
             for moMatrix in moMatrixLs:
                 point = moMatrix.off
-                toPosLs.append(objMg*point)
+                posLs.append(objMg*point)
         else:
             pointPosLs = obj.GetCache().GetDeformCache().GetAllPoints()
             for point in pointPosLs:
