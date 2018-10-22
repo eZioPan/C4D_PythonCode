@@ -2,7 +2,8 @@
 # Author: eZioPan
 # Page: github.com/eZioPan
 # License: Creative Commons Attribution Share Alike 4.0
-# Last Update: 2018Oct19
+# Version: 0.2.0
+# Last Update: 2018Oct22
 
 """
 USEAGE:
@@ -59,7 +60,8 @@ def main():
 # Author: eZioPan
 # Page: github.com/eZioPan
 # License: Creative Commons Attribution Share Alike 4.0
-# Last Update: 2018Oct19
+# Version: 0.2.0
+# Last Update: 2018Oct22
 
 import c4d
 from c4d.modules import mograph as mo
@@ -102,6 +104,15 @@ def SetLinePointPos(lineObj, fromPosLs, toPosLs):
     fromPosCnt = len(fromPosLs)
     toPosCnt = len(toPosLs)
     rayCnt = max(fromPosCnt, toPosCnt)
+
+    iLineMg = ~(lineObj.GetMg()) # Invert carrier global matrix
+
+    # apply invert carrier matrix to all point position
+    for i in range(fromPosCnt):
+        fromPosLs[i] = iLineMg * fromPosLs[i]
+    for i in range(toPosCnt):
+        toPosLs[i] = iLineMg * toPosLs[i]
+
     lineObj.ResizeObject(2*rayCnt, rayCnt)
 
     for i in range(rayCnt):
